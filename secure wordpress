@@ -1,0 +1,800 @@
+#--------------------------------------------------------------------------
+# rename in to .htaccess is complete di firewall 
+#--------------------------------------------------------------------------
+
+#--------------------------------------------------------------------------
+# Security Basic
+#--------------------------------------------------------------------------
+
+# For Multisite or dinamic IP Adress
+ErrorDocument 401 /path-to-domain.com/index.php?error=404
+ErrorDocument 403 /path-to-domain.com/index.php?error=404
+
+<IfModule mod_rewrite.c>
+RewriteEngine on
+RewriteCond %{REQUEST_METHOD} POST
+RewriteCond %{HTTP_REFERER} !^http://(.*)?domain.com [NC]
+RewriteCond %{REQUEST_URI} ^(.*)?wp-login\.php(.*)$ [OR]
+RewriteCond %{REQUEST_URI} ^(.*)?wp-admin$
+RewriteRule ^(.*)$ - [F]
+</IfModule>
+
+# block direct access to your plugin and theme
+RewriteCond %{REQUEST_URI} !^/wp-content/plugins/file/to/exclude\.php
+RewriteCond %{REQUEST_URI} !^/wp-content/plugins/directory/to/exclude/
+RewriteRule wp-content/plugins/(.*\.php)$ - [R=404,L]
+RewriteCond %{REQUEST_URI} !^/wp-content/themes/file/to/exclude\.php
+RewriteCond %{REQUEST_URI} !^/wp-content/themes/directory/to/exclude/
+RewriteRule wp-content/themes/(.*\.php)$ - [R=404,L]
+
+# Block Include-Only Files
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+RewriteRule ^wp-admin/includes/ - [F,L]
+RewriteRule !^wp-includes/ - [S=3]
+RewriteRule ^wp-includes/[^/]+\.php$ - [F,L]
+RewriteRule ^wp-includes/js/tinymce/langs/.+\.php - [F,L]
+RewriteRule ^wp-includes/theme-compat/ - [F,L]
+</IfModule>
+
+# block direct access to your wp-include
+RewriteCond %{REQUEST_URI} !^/wp-includes/file/to/exclude\.php
+RewriteCond %{REQUEST_URI} !^/wp-includes/directory/to/exclude/
+RewriteRule wp-includes/(.*\.php)$ - [R=404,L]
+
+# block direct access to your uploads
+RewriteCond %{REQUEST_URI} !^/wp-content/uploads/file/to/exclude\.php
+RewriteCond %{REQUEST_URI} !^/wp-content/uploads/directory/to/exclude/
+RewriteRule wp-content/uploads/(.*\.php)$ - [R=404,L]
+
+#Prevent subfolder loading. This goes
+RewriteCond %{HTTP_HOST} ^primary\.com$ [OR]
+RewriteCond %{HTTP_HOST} ^www\.primary\.com$
+RewriteRule ^addon\.com\/?(.*)$ "http\:\/\/www\.addon\.com\/$1" [R=301,L]
+
+# Always use https for secure connections
+RewriteEngine On
+RewriteCond %{SERVER_PORT} 80
+RewriteRule ^(.*)$ https://www.domain.com/$1 [R=301,L]
+
+# remove slash if not directory
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} /$
+RewriteRule (.*)/ $1 [R=301,L]
+
+# remove .php; use THE_REQUEST to prevent infinite loops
+Options +FollowSymLinks -MultiViews -indexes
+RewriteEngine On
+RewriteBase /
+RewriteCond %{THE_REQUEST} ^GET\ (.*)\.php\ HTTP
+RewriteRule (.*)\.php$ $1 [L,R=301]
+
+# add .php to access file, but don't redirect
+Options +FollowSymLinks -MultiViews -indexes
+RewriteEngine On
+RewriteBase /
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteCond %{REQUEST_URI} !/$
+RewriteRule (.*) $1.php [L]
+
+#-------------------------------------------------------------------------
+# Security Headers
+#-------------------------------------------------------------------------
+
+# Security Headers
+## No-Referrer-Header
+<IfModule mod_headers.c>
+    Header set Referrer-Policy "no-referrer"
+</IfModule>
+
+## X-FRAME-OPTIONS-Header
+<IfModule mod_headers.c>
+    Header set X-Frame-Options "sameorigin"
+</IfModule>
+
+## X-XSS-PROTECTION-Header
+<IfModule mod_headers.c>
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+## X-Content-Type-Options-Header
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# Prevent false certificate (experimental)
+<IfModule mod_headers.c>
+   Header set Expect-CT "enforce, max-age=21600"	
+</IfModule>
+
+#Unset headers revealing versions strings
+<IfModule mod_headers.c>
+  Header unset X-Powered-By
+  Header unset X-Pingback
+  Header unset SERVER
+</IfModule>
+
+#Force secure cookies (uncomment for HTTPS)
+<IfModule mod_headers.c>
+  #Header edit Set-Cookie ^(.*)$ $1;HttpOnly;Secure
+</IfModule>
+
+#---------------------------------------------------------------------------
+# User Security
+#---------------------------------------------------------------------------
+
+# disable the server signature
+ServerSignature Off
+RewriteRule ^.*$ http://english-61925045732.spampoison.com [R,L]
+
+# block author scans
+RewriteEngine On
+RewriteBase /
+RewriteCond %{QUERY_STRING} (author=\d+) [NC]
+RewriteRule .* - [F]
+# END block author scans
+
+# Stop Username Enumeration Attacks
+RewriteCond %{REQUEST_URI} !^/wp-admin [NC]
+RewriteCond %{QUERY_STRING} author=\d
+RewriteRule .* - [R=403,L]
+
+# Block User list Phishing Requests
+<IfModule mod_rewrite.c>
+RewriteCond %{QUERY_STRING} ^author=([0-9]*)
+RewriteRule .* https://domain.com/? [L,R=302]
+</IfModule>
+
+#--------------------------------------------------------------------------
+# Security iniectons and Requests
+#--------------------------------------------------------------------------
+
+# Block Nuisance Requests for Non-Existent Files
+<IfModule mod_alias.c>
+	RedirectMatch 403 (?i)\.php\.suspected
+	RedirectMatch 403 (?i)apple-app-site-association
+	RedirectMatch 403 (?i)/autodiscover/autodiscover.xml
+</IfModule>
+
+# Block really Long Request
+<IfModule mod_rewrite.c>
+    RewriteCond %{REQUEST_METHOD} .* [NC]
+    RewriteCond %{THE_REQUEST}  (YesThisIsAReallyLongRequest|ScanningForResearchPurpose) [NC,OR]
+    RewriteCond %{QUERY_STRING} (YesThisIsAReallyLongRequest|ScanningForResearchPurpose) [NC]
+    RewriteRule .* - [F,L]
+</IfModule>
+
+# deny access to evil robots site rippers offline browsers and other nasty scum
+RewriteBase /
+RewriteCond %{HTTP_USER_AGENT} ^Anarchie [OR]
+RewriteCond %{HTTP_USER_AGENT} ^ASPSeek [OR]
+RewriteCond %{HTTP_USER_AGENT} ^attach [OR]
+RewriteCond %{HTTP_USER_AGENT} ^autoemailspider [OR]
+RewriteCond %{HTTP_USER_AGENT} ^Xaldon\ WebSpider [OR]
+RewriteCond %{HTTP_USER_AGENT} ^Xenu [OR]
+RewriteCond %{HTTP_USER_AGENT} ^Zeus.*Webster [OR]
+RewriteCond %{HTTP_USER_AGENT} ^Zeus
+RewriteRule ^.* - [F,L]
+
+# Protect Your Site Against Script Injections
+Options +FollowSymLinks
+RewriteEngine On
+RewriteCond %{QUERY_STRING} (<|%3C).*script.*(>|%3E) [NC,OR]
+RewriteCond %{QUERY_STRING} GLOBALS(=|[|%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} _REQUEST(=|[|%[0-9A-Z]{0,2})
+RewriteRule ^(.*)$ index.php [F,L]
+
+# File injection protection
+RewriteCond %{REQUEST_METHOD} GET
+RewriteCond %{QUERY_STRING} [a-zA-Z0-9_]=http:// [OR]
+RewriteCond %{QUERY_STRING} [a-zA-Z0-9_]=(\.\.//?)+ [OR]
+RewriteCond %{QUERY_STRING} [a-zA-Z0-9_]=http%3A%2F%2F [OR]
+RewriteCond %{QUERY_STRING} [a-zA-Z0-9_]=/([a-z0-9_.]//?)+ [NC]
+RewriteRule .* - [F]
+
+<IfModule mod_rewrite.c>
+# Enable rewrite engine
+RewriteEngine On
+
+# Block suspicious request methods
+RewriteCond %{REQUEST_METHOD} ^(HEAD|TRACE|DELETE|TRACK|DEBUG) [NC]
+RewriteRule ^(.*)$ - [F,L]
+
+# Block WP timthumb hack
+RewriteCond %{REQUEST_URI} (timthumb\.php|phpthumb\.php|thumb\.php|thumbs\.php) [NC]
+RewriteRule . - [S=1]
+
+# Block suspicious user agents and requests
+RewriteCond %{HTTP_USER_AGENT} (libwww-perl|wget|python|nikto|curl|scan|java|winhttp|clshttp|loader) [NC,OR]
+RewriteCond %{HTTP_USER_AGENT} (<|>|'|%0A|%0D|%27|%3C|%3E|%00) [NC,OR]
+RewriteCond %{HTTP_USER_AGENT} (;|<|>|'|"|\)|\(|%0A|%0D|%22|%27|%28|%3C|%3E|%00).*(libwww-perl|wget|python|nikto|curl|scan|java|winhttp|HTTrack|clshttp|archiver|loader|email|harvest|extract|grab|miner) [NC,OR]
+RewriteCond %{THE_REQUEST} \?\ HTTP/ [NC,OR]
+RewriteCond %{THE_REQUEST} \/\*\ HTTP/ [NC,OR]
+RewriteCond %{THE_REQUEST} etc/passwd [NC,OR]
+RewriteCond %{THE_REQUEST} cgi-bin [NC,OR]
+RewriteCond %{THE_REQUEST} (%0A|%0D) [NC,OR]
+
+# Protect against SQL Injection
+# @ https://wp-mix.com/protect-against-sql-injection/
+<IfModule mod_rewrite.c>
+	RewriteCond %{QUERY_STRING} (eval\() [NC,OR]
+	RewriteCond %{QUERY_STRING} (javascript:)(.*)(;) [NC,OR]
+	RewriteCond %{QUERY_STRING} (base64_encode)(.*)(\() [NC,OR]
+	RewriteCond %{QUERY_STRING} (GLOBALS|REQUEST)(=|\[|%) [NC,OR]
+	RewriteCond %{QUERY_STRING} (<|%3C)(.*)script(.*)(>|%3) [NC,OR]
+	RewriteCond %{QUERY_STRING} (\\|\.\.\.|\.\./|~|`|<|>|\|) [NC,OR]
+	RewriteCond %{QUERY_STRING} mosConfig_[a-zA-Z_]{1,22}(=|%3D) [NC,OR]
+	RewriteCond %{QUERY_STRING} (boot\.ini|etc/passwd|self/environ) [NC,OR]
+	RewriteCond %{QUERY_STRING} (\'|\")(.*)(drop|exec|insert|md5|select|union) [NC]
+	RewriteRule .* - [F]
+
+# Block MySQL injections, RFI, base64, etc.
+RewriteCond %{QUERY_STRING} [a-zA-Z0-9_]=http:// [OR]
+RewriteCond %{QUERY_STRING} [a-zA-Z0-9_]=http%3A%2F%2F [OR]
+RewriteCond %{QUERY_STRING} [a-zA-Z0-9_]=(\.\.//?)+ [OR]
+RewriteCond %{QUERY_STRING} [a-zA-Z0-9_]=/([a-z0-9_.]//?)+ [NC,OR]
+RewriteCond %{QUERY_STRING} \=PHP[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} [NC,OR]
+RewriteCond %{QUERY_STRING} (\.\./|\.\.) [OR]
+RewriteCond %{QUERY_STRING} ftp\: [NC,OR]
+RewriteCond %{QUERY_STRING} http\: [NC,OR]
+RewriteCond %{QUERY_STRING} https\: [NC,OR]
+RewriteCond %{QUERY_STRING} \=\|w\| [NC,OR]
+RewriteCond %{QUERY_STRING} ^(.*)/self/(.*)$ [NC,OR]
+RewriteCond %{QUERY_STRING} ^(.*)cPath=http://(.*)$ [NC,OR]
+RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
+RewriteCond %{QUERY_STRING} (<|%3C)([^s]*s)+cript.*(>|%3E) [NC,OR]
+RewriteCond %{QUERY_STRING} (\<|%3C).*iframe.*(\>|%3E) [NC,OR]
+RewriteCond %{QUERY_STRING} (<|%3C)([^i]*i)+frame.*(>|%3E) [NC,OR]
+RewriteCond %{QUERY_STRING} base64_encode.*\(.*\) [NC,OR]
+RewriteCond %{QUERY_STRING} base64_(en|de)code[^(]*\([^)]*\) [NC,OR]
+RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} ^.*(\[|\]|\(|\)|<|>).* [NC,OR]
+RewriteCond %{QUERY_STRING} (NULL|OUTFILE|LOAD_FILE) [OR]
+RewriteCond %{QUERY_STRING} (\./|\../|\.../)+(motd|etc|bin) [NC,OR]
+RewriteCond %{QUERY_STRING} (localhost|loopback|127\.0\.0\.1) [NC,OR]
+RewriteCond %{QUERY_STRING} (<|>|'|%0A|%0D|%27|%3C|%3E|%00) [NC,OR]
+RewriteCond %{QUERY_STRING} concat[^\(]*\( [NC,OR]
+RewriteCond %{QUERY_STRING} union([^s]*s)+elect [NC,OR]
+RewriteCond %{QUERY_STRING} union([^a]*a)+ll([^s]*s)+elect [NC,OR]
+RewriteCond %{QUERY_STRING} (;|<|>|'|"|\)|%0A|%0D|%22|%27|%3C|%3E|%00).*(/\*|union|select|insert|drop|delete|update|cast|create|char|convert|alter|declare|order|script|set|md5|benchmark|encode) [NC,OR]
+
+# PHP-CGI Vulnerability
+RewriteCond %{QUERY_STRING} ^(%2d|\-)[^=]+$ [NC,OR]
+
+#proc/self/environ? no way!
+RewriteCond %{QUERY_STRING} proc\/self\/environ [NC,OR]
+
+RewriteCond %{QUERY_STRING} (sp_executesql) [NC]
+RewriteRule ^(.*)$ - [F,L]
+
+</IfModule>
+
+#----------------------------------------------------------------------------
+# Indexes
+#----------------------------------------------------------------------------
+
+# Don't list directories
+<IfModule mod_autoindex.c>
+  Options -Indexes
+</IfModule>
+
+# remove index
+Options +FollowSymLinks -MultiViews -indexes
+RewriteEngine On
+RewriteBase /
+RewriteCond %{THE_REQUEST} /index(\.php)?[\s?/] [NC]
+RewriteRule ^(.*?)index(/|$) /$1 [L,R=301,NC,NE]
+
+# remove index and slash if not directory
+Options +FollowSymLinks -MultiViews -indexes
+RewriteEngine On
+RewriteBase /
+RewriteRule (.*)/index$ $1/ [R=302]
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} /$
+RewriteRule (.*)/ $1 [R=301,L]
+
+#----------------------------------------------------------------------------
+# Security file
+#----------------------------------------------------------------------------
+
+# No access to the install.php
+<files install.php>
+Order allow,deny
+Deny from all
+</files>
+
+# Block access to file
+<FilesMatch "\.(.php|php.ini|/.[hH][tT][aApP]txt|md|exe|sh|bak|inc|pot|po|mo|log|sql|(.*)\.ttf|(.*)\.bak)$">
+Order allow,deny
+Deny from all
+</FilesMatch>
+
+#Protect .htaccess
+<files ~ "^.*\.([Hh][Tt][Aa])">
+order allow,deny
+deny from all
+satisfy all
+</files>
+
+# Block access to wp-config
+<files wp-config.php>
+order allow,deny
+deny from all
+</files>
+
+# Block access to xmlrpc
+<Files xmlrpc.php>
+order deny,allow
+deny from all
+allow from 123.123.123.123
+</Files>
+
+# Block access to xmlrpc mobile
+<IfModule mod_setenvif.c>
+ <Files xmlrpc.php>
+ BrowserMatch "Poster" allowed
+ BrowserMatch "WordPress" allowed
+ BrowserMatch "Windows Live Writer" allowed
+ BrowserMatch "wp-iphone" allowed
+ BrowserMatch "wp-android" allowed
+ Order Deny,Allow
+ Deny from All
+ Allow from env=allowed
+ </Files>
+</IfModule>
+
+#Protect error_log
+<files error_log>
+order allow,deny
+deny from all
+</files>
+
+# Protect txt
+<Files *.txt> 
+	Deny from all
+</Files>
+
+# No access to the readme.html
+<files readme.html>
+ Order Allow,Deny
+ Deny from all
+ Satisfy all
+</Files>
+
+# No error log access 
+<files error_log>
+Order allow,deny
+Deny from all
+</files>
+
+# Protect the cofiguration file
+<Files php.ini> 
+	Order Allow,Deny
+	Deny from all
+</Files>
+
+# Protect php5 configuration file
+<Files php5.ini> 
+	Order Allow,Deny
+	Deny from all
+</Files>
+
+# Protect installation file
+<Files install.php>
+	Order Allow,Deny
+	Deny from all
+</Files>
+
+#No access .htpasswd
+<FilesMatch "(\.htpasswd)">
+  Order deny,allow
+  Deny from all
+</FilesMatch>
+
+# Block access to robot
+<Files robots.txt>
+Allow from all
+</Files>
+
+# Block access to ads
+<Files ads.txt>
+Allow from all
+</Files>
+
+# Correct URL Typo Automatically
+<ifmodule mod_speling.c>
+CheckSpelling On
+</ifmodule>
+
+# Disable Image Hotlinking
+RewriteEngine on
+RewriteCond %{HTTP_REFERER} !^$
+RewriteCond %{HTTP_REFERER} !^http(s)?://(www\.)?domain.com [NC]
+RewriteCond %{HTTP_REFERER} !^http(s)?://(www\.)?domain.com [NC]
+RewriteRule \.(jpg|jpeg|png|gif)$ http://i.imgur.com/g7ptdBB.png [NC,R,L]
+
+# Deny access to l_backuptoster.php / l_backuptoster_backup.php
+#  (PHP backdoor)
+RewriteEngine On
+RewriteCond %{REQUEST_URI} (^/l_backuptoster.php) [NC]
+RewriteRule .? - [F,L]
+
+#----------------------------------------------------------------
+# Firewall
+#---------------------------------------------------------------
+
+# 6G FIREWALL/BLACKLIST
+# @ https://perishablepress.com/6g/
+
+# 6G:[QUERY STRINGS]
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteCond %{QUERY_STRING} (eval\() [NC,OR]
+	RewriteCond %{QUERY_STRING} (127\.0\.0\.1) [NC,OR]
+	RewriteCond %{QUERY_STRING} ([a-z0-9]{2000,}) [NC,OR]
+	RewriteCond %{QUERY_STRING} (javascript:)(.*)(;) [NC,OR]
+	RewriteCond %{QUERY_STRING} (base64_encode)(.*)(\() [NC,OR]
+	RewriteCond %{QUERY_STRING} (GLOBALS|REQUEST)(=|\[|%) [NC,OR]
+	RewriteCond %{QUERY_STRING} (<|%3C)(.*)script(.*)(>|%3) [NC,OR]
+	RewriteCond %{QUERY_STRING} (\\|\.\.\.|\.\./|~|`|<|>|\|) [NC,OR]
+	RewriteCond %{QUERY_STRING} (boot\.ini|etc/passwd|self/environ) [NC,OR]
+	RewriteCond %{QUERY_STRING} (thumbs?(_editor|open)?|tim(thumb)?)\.php [NC,OR]
+	RewriteCond %{QUERY_STRING} (\'|\")(.*)(drop|insert|md5|select|union) [NC]
+	RewriteRule .* - [F]
+</IfModule>
+
+# 6G:[REQUEST METHOD]
+<IfModule mod_rewrite.c>
+	RewriteCond %{REQUEST_METHOD} ^(connect|debug|move|put|trace|track) [NC]
+	RewriteRule .* - [F]
+</IfModule>
+
+# 6G:[REFERRERS]
+<IfModule mod_rewrite.c>
+	RewriteCond %{HTTP_REFERER} ([a-z0-9]{2000,}) [NC,OR]
+	RewriteCond %{HTTP_REFERER} (semalt.com|todaperfeita) [NC]
+	RewriteRule .* - [F]
+</IfModule>
+
+# 6G:[REQUEST STRINGS]
+<IfModule mod_alias.c>
+	RedirectMatch 403 (?i)([a-z0-9]{2000,})
+	RedirectMatch 403 (?i)(https?|ftp|php):/
+	RedirectMatch 403 (?i)(base64_encode)(.*)(\()
+	RedirectMatch 403 (?i)(=\\\'|=\\%27|/\\\'/?)\.
+	RedirectMatch 403 (?i)/(\$(\&)?|\*|\"|\.|,|&|&amp;?)/?$
+	RedirectMatch 403 (?i)(\{0\}|\(/\(|\.\.\.|\+\+\+|\\\"\\\")
+	RedirectMatch 403 (?i)(~|`|<|>|:|;|,|%|\\|\s|\{|\}|\[|\]|\|)
+	RedirectMatch 403 (?i)/(=|\$&|_mm|cgi-|etc/passwd|muieblack)
+	RedirectMatch 403 (?i)(&pws=0|_vti_|\(null\)|\{\$itemURL\}|echo(.*)kae|etc/passwd|eval\(|self/environ)
+	RedirectMatch 403 (?i)\.(aspx?|bash|bak?|cfg|cgi|dll|exe|git|hg|ini|jsp|log|mdb|out|sql|svn|swp|tar|rar|rdf)$
+	RedirectMatch 403 (?i)/(^$|(wp-)?config|mobiquo|phpinfo|shell|sqlpatch|thumb|thumb_editor|thumbopen|timthumb|webshell)\.php
+</IfModule>
+
+# 6G:[USER AGENTS]
+<IfModule mod_setenvif.c>
+	SetEnvIfNoCase User-Agent ([a-z0-9]{2000,}) bad_bot
+	SetEnvIfNoCase User-Agent (archive.org|binlar|casper|checkpriv|choppy|clshttp|cmsworld|diavol|dotbot|extract|feedfinder|flicky|g00g1e|harvest|heritrix|httrack|kmccrew|loader|miner|nikto|nutch|planetwork|postrank|purebot|pycurl|python|seekerspider|siclab|skygrid|sqlmap|sucker|turnit|vikspider|winhttp|xxxyy|youda|zmeu|zune) bad_bot
+
+	# Apache < 2.3
+	<IfModule !mod_authz_core.c>
+		Order Allow,Deny
+		Allow from all
+		Deny from env=bad_bot
+	</IfModule>
+
+	# Apache >= 2.3
+	<IfModule mod_authz_core.c>
+		<RequireAll>
+			Require all Granted
+			Require not env bad_bot
+		</RequireAll>
+	</IfModule>
+</IfModule>
+
+# 6G:[BAD IPS]
+<Limit GET HEAD OPTIONS POST PUT>
+	Order Allow,Deny
+	Allow from All
+	# uncomment/edit/repeat next line to block IPs
+	# Deny from 123.456.789
+</Limit>
+
+# Start HackRepair.com Blacklist
+ RewriteEngine on
+ # Start Abuse Agent Blocking
+ RewriteCond %{HTTP_USER_AGENT} "^Mozilla.*Indy" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Mozilla.*NEWT" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^$" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Maxthon$" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^SeaMonkey$" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Acunetix" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^binlar" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^BlackWidow" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Bolt 0" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^BOT for JCE" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Bot mailto\:craftbot@yahoo\.com" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^casper" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^checkprivacy" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^ChinaClaw" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^clshttp" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^cmsworldmap" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Custo" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Default Browser 0" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^diavol" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^DIIbot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^DISCo" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^dotbot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Download Demon" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^eCatch" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^EirGrabber" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^EmailCollector" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^EmailSiphon" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^EmailWolf" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Express WebPictures" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^extract" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^ExtractorPro" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^EyeNetIE" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^feedfinder" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^FHscan" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^FlashGet" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^flicky" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^g00g1e" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^GetRight" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^GetWeb\!" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Go\!Zilla" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Go\-Ahead\-Got\-It" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^grab" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^GrabNet" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Grafula" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^harvest" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^HMView" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Image Stripper" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Image Sucker" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^InterGET" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Internet Ninja" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^InternetSeer\.com" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^jakarta" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Java" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^JetCar" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^JOC Web Spider" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^kanagawa" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^kmccrew" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^larbin" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^LeechFTP" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^libwww" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Mass Downloader" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^microsoft\.url" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^MIDown tool" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^miner" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Mister PiX" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^MSFrontPage" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Navroad" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^NearSite" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Net Vampire" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^NetAnts" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^NetSpider" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^NetZIP" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^nutch" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Octopus" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Offline Explorer" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Offline Navigator" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^PageGrabber" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Papa Foto" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^pavuk" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^pcBrowser" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^PeoplePal" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^planetwork" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^psbot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^purebot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^pycurl" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^RealDownload" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^ReGet" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Rippers 0" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^sitecheck\.internetseer\.com" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^SiteSnagger" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^skygrid" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^SmartDownload" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^sucker" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^SuperBot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^SuperHTTP" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Surfbot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^tAkeOut" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Teleport Pro" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Toata dragostea mea pentru diavola" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^turnit" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^vikspider" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^VoidEYE" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Web Image Collector" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WebAuto" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WebBandit" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WebCopier" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WebFetch" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WebGo IS" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WebLeacher" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WebReaper" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WebSauger" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Website eXtractor" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Website Quester" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WebStripper" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WebWhacker" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WebZIP" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Widow" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WPScan" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WWW\-Mechanize" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^WWWOFFLE" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Xaldon WebSpider" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^Zeus" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "^zmeu" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "360Spider" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "CazoodleBot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "discobot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "EasouSpider" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "ecxi" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "GT\:\:WWW" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "heritrix" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "HTTP\:\:Lite" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "HTTrack" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "ia_archiver" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "id\-search" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "IDBot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "Indy Library" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "IRLbot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "ISC Systems iRc Search 2\.1" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "LinksCrawler" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "LinksManager\.com_bot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "linkwalker" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "lwp\-trivial" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "MFC_Tear_Sample" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "Microsoft URL Control" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "Missigua Locator" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "MJ12bot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "panscient\.com" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "PECL\:\:HTTP" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "PHPCrawl" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "PleaseCrawl" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "SBIder" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "SearchmetricsBot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "SeznamBot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "Snoopy" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "Steeler" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "URI\:\:Fetch" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "urllib" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "Web Sucker" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "webalta" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "WebCollage" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "Wells Search II" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "WEP Search" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "XoviBot" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "YisouSpider" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "zermelo" [NC,OR]
+ RewriteCond %{HTTP_USER_AGENT} "ZyBorg" [NC,OR]
+ # End Abuse Agent Blocking
+ # Start Abuse HTTP Referrer Blocking
+ RewriteCond %{HTTP_REFERER} "^https?://(?:[^/]+\.)?semalt\.com" [NC,OR]
+ RewriteCond %{HTTP_REFERER} "^https?://(?:[^/]+\.)?kambasoft\.com" [NC,OR]
+ RewriteCond %{HTTP_REFERER} "^https?://(?:[^/]+\.)?savetubevideo\.com" [NC]
+ # End Abuse HTTP Referrer Blocking
+ RewriteRule ^.* - [F,L]
+ # End HackRepair.com Blacklist, http://pastebin.com/u/hackrepair
+ 
+ # 7G FIREWALL v1.0 20190124
+# @ https://perishablepress.com/7g-firewall/
+
+# 7G:[CORE]
+ServerSignature Off
+Options -Indexes
+RewriteEngine On
+RewriteBase /
+
+# 7G:[QUERY STRING]
+<IfModule mod_rewrite.c>	
+	RewriteCond %{REQUEST_URI} !(7g_log.php) [NC]	
+	RewriteCond %{QUERY_STRING} ([a-z0-9]{2000,}) [NC,OR]
+	RewriteCond %{QUERY_STRING} (/|%2f)(:|%3a)(/|%2f) [NC,OR]
+	RewriteCond %{QUERY_STRING} (/|%2f)(\*|%2a)(\*|%2a)(/|%2f) [NC,OR]
+	RewriteCond %{QUERY_STRING} (~|`|<|>|\^|\|\\|0x00|%00|%0d%0a) [NC,OR]
+	RewriteCond %{QUERY_STRING} (cmd|command)(=|%3d)(chdir|mkdir)(.*)(x20) [NC,OR]
+	RewriteCond %{QUERY_STRING} (fck|ckfinder|fullclick|ckfinder|fckeditor) [NC,OR]
+	RewriteCond %{QUERY_STRING} (thumbs?(_editor|open)?|tim(thumbs?)?)((\.|%2e)php) [NC,OR]
+	RewriteCond %{QUERY_STRING} (absolute_|base|root_)(dir|path)(=|%3d)(ftp|https?) [NC,OR]
+	RewriteCond %{QUERY_STRING} (localhost|loopback|127(\.|%2e)0(\.|%2e)0(\.|%2e)1) [NC,OR]
+	RewriteCond %{QUERY_STRING} (\.|20)(get|the)(_|%5f)(permalink|posts_page_url)(\(|%28) [NC,OR]
+	RewriteCond %{QUERY_STRING} (s)?(ftp|http|inurl|php)(s)?(:(/|%2f|%u2215)(/|%2f|%u2215)) [NC,OR]
+	RewriteCond %{QUERY_STRING} (/|%2f)((wp-)?(config)(uration)?)((\.|%2e)inc)?((\.|%2e)php) [NC,OR]
+	RewriteCond %{QUERY_STRING} (globals|mosconfig([a-z_]{1,22})|request)(=|[|%[a-z0-9]{0,2}) [NC,OR]
+	RewriteCond %{QUERY_STRING} ((boot|win)((\.|%2e)ini)|etc(/|%2f)passwd|self(/|%2f)environ) [NC,OR]
+	RewriteCond %{QUERY_STRING} (((/|%2f){3,3})|((\.|%2e){3,3})|((\.|%2e){2,2})(/|%2f|%u2215)) [NC,OR]
+	RewriteCond %{QUERY_STRING} (benchmark|char|exec|fopen|function|html)(.*)(\(|%28)(.*)(\)|%29) [NC,OR]
+	RewriteCond %{QUERY_STRING} (php)([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}) [NC,OR]
+	RewriteCond %{QUERY_STRING} (e|%65|%45)(v|%76|%56)(a|%61|%31)(l|%6c|%4c)(.*)(\(|%28)(.*)(\)|%29) [NC,OR]
+	RewriteCond %{QUERY_STRING} (/|%2f)(=|%3d|$&|_mm|cgi(\.|-)|inurl(:|%3a)(/|%2f)|(mod|path)(=|%3d)(\.|%2e)) [NC,OR]
+	RewriteCond %{QUERY_STRING} (<|%3c)(.*)(e|%65|%45)(m|%6d|%4d)(b|%62|%42)(e|%65|%45)(d|%64|%44)(.*)(>|%3e) [NC,OR]
+	RewriteCond %{QUERY_STRING} (<|%3c)(.*)(i|%69|%49)(f|%66|%46)(r|%72|%52)(a|%61|%41)(m|%6d|%4d)(e|%65|%45)(.*)(>|%3e) [NC,OR]
+	RewriteCond %{QUERY_STRING} (<|%3c)(.*)(o|%4f|%6f)(b|%62|%42)(j|%4a|%6a)(e|%65|%45)(c|%63|%43)(t|%74|%54)(.*)(>|%3e) [NC,OR]
+	RewriteCond %{QUERY_STRING} (<|%3c)(.*)(s|%73|%53)(c|%63|%43)(r|%72|%52)(i|%69|%49)(p|%70|%50)(t|%74|%54)(.*)(>|%3e) [NC,OR]
+	RewriteCond %{QUERY_STRING} (\+|%2b|%20)(d|%64|%44)(e|%65|%45)(l|%6c|%4c)(e|%65|%45)(t|%74|%54)(e|%65|%45)(\+|%2b|%20) [NC,OR]
+	RewriteCond %{QUERY_STRING} (\+|%2b|%20)(i|%69|%49)(n|%6e|%4e)(s|%73|%53)(e|%65|%45)(r|%72|%52)(t|%74|%54)(\+|%2b|%20) [NC,OR]
+	RewriteCond %{QUERY_STRING} (\+|%2b|%20)(s|%73|%53)(e|%65|%45)(l|%6c|%4c)(e|%65|%45)(c|%63|%43)(t|%74|%54)(\+|%2b|%20) [NC,OR]
+	RewriteCond %{QUERY_STRING} (\+|%2b|%20)(u|%75|%55)(p|%70|%50)(d|%64|%44)(a|%61|%41)(t|%74|%54)(e|%65|%45)(\+|%2b|%20) [NC,OR]
+	RewriteCond %{QUERY_STRING} (\\x00|(\"|%22|\'|%27)?0(\"|%22|\'|%27)?(=|%3d)(\"|%22|\'|%27)?0|cast(\(|%28)0x|or%201(=|%3d)1) [NC,OR]
+	RewriteCond %{QUERY_STRING} (g|%67|%47)(l|%6c|%4c)(o|%6f|%4f)(b|%62|%42)(a|%61|%41)(l|%6c|%4c)(s|%73|%53)(=|[|%[0-9A-Z]{0,2}) [NC,OR]
+	RewriteCond %{QUERY_STRING} (_|%5f)(r|%72|%52)(e|%65|%45)(q|%71|%51)(u|%75|%55)(e|%65|%45)(s|%73|%53)(t|%74|%54)(=|[|%[0-9A-Z]{0,2}) [NC,OR]
+	RewriteCond %{QUERY_STRING} (j|%6a|%4a)(a|%61|%41)(v|%76|%56)(a|%61|%31)(s|%73|%53)(c|%63|%43)(r|%72|%52)(i|%69|%49)(p|%70|%50)(t|%74|%54)(:|%3a)(.*)(;|%3b) [NC,OR]
+	RewriteCond %{QUERY_STRING} (b|%62|%42)(a|%61|%41)(s|%73|%53)(e|%65|%45)(6|%36)(4|%34)(_|%5f)(e|%65|%45|d|%64|%44)(e|%65|%45|n|%6e|%4e)(c|%63|%43)(o|%6f|%4f)(d|%64|%44)(e|%65|%45)(.*)(\()(.*)(\)) [NC,OR]
+	RewriteCond %{QUERY_STRING} (allow_url_(fopen|include)|auto_prepend_file|blexbot|browsersploit|(c99|php)shell|curltest|disable_functions?|document_root|elastix|encodeuricom|exec|exploit|fclose|fgets|fputs|fread|fsbuff|fsockopen|gethostbyname|grablogin|hmei7|input_file|load_file|null|open_basedir|outfile|passthru|popen|proc_open|quickbrute|remoteview|revslider|root_path|safe_mode|shell_exec|site((.){0,2})copier|sux0r|system|trojan|wget|xertive) [NC,OR]
+	RewriteCond %{QUERY_STRING} (;|<|>|\'|\"|\)|%0a|%0d|%22|%27|%3c|%3e|%00)(.*)(/\*|alter|base64|benchmark|cast|char|concat|convert|create|encode|declare|delete|drop|insert|md5|order|request|script|select|set|union|update) [NC,OR]
+	RewriteCond %{QUERY_STRING} ((\+|%2b)(concat|delete|get|select|union)(\+|%2b)) [NC,OR]
+	RewriteCond %{QUERY_STRING} (union)(.*)(select)(.*)(\(|%28) [NC,OR]
+	RewriteCond %{QUERY_STRING} (concat)(.*)(\(|%28) [NC]	
+	RewriteRule . - [F,L]	
+	# RewriteRule . /7g_log.php?log [L,NE,E=7G_QUERY_STRING:%1___%2___%3]	
+</IfModule>
+
+# 7G:[REQUEST URI]
+<IfModule mod_rewrite.c>	
+	RewriteCond %{REQUEST_URI} !(7g_log.php) [NC]	
+	RewriteCond %{REQUEST_URI} ([a-z0-9]{2000,}) [NC,OR]
+	RewriteCond %{REQUEST_URI} (=?\\(\'|%27)/?)(\.) [NC,OR]
+	RewriteCond %{REQUEST_URI} (/)(\*|\"|\'|\.|,|&|&amp;?)/?$ [NC,OR]
+	RewriteCond %{REQUEST_URI} (\.)(php)(\()?([0-9]+)(\))?(/)?$ [NC,OR]
+	RewriteCond %{REQUEST_URI} (/)(vbulletin|boards|vbforum)(/)? [NC,OR]
+	RewriteCond %{REQUEST_URI} (\^|~|`|<|>|,|%|\\|\{|\}|\[|\]|\|) [NC,OR]
+	RewriteCond %{REQUEST_URI} (\{0\}|\"?0\"?=\"?0|\(/\(|\.\.\.|\+\+\+|\\\") [NC,OR]
+	RewriteCond %{REQUEST_URI} (thumbs?(_editor|open)?|tim(thumbs?)?)(\.php) [NC,OR]
+	RewriteCond %{REQUEST_URI} (/)(fck|ckfinder|fullclick|ckfinder|fckeditor) [NC,OR]
+	RewriteCond %{REQUEST_URI} (\.|20)(get|the)(_)(permalink|posts_page_url)(\() [NC,OR]
+	RewriteCond %{REQUEST_URI} (///|\?\?|/&&|/\*(.*)\*/|/:/|\\\\|0x00|%00|%0d%0a) [NC,OR]
+	RewriteCond %{REQUEST_URI} (/%7e)(root|ftp|bin|nobody|named|guest|logs|sshd)(/) [NC,OR]
+	RewriteCond %{REQUEST_URI} (/)(etc|var)(/)(hidden|secret|shadow|ninja|passwd|tmp)(/)?$ [NC,OR]
+	RewriteCond %{REQUEST_URI} (s)?(ftp|http|inurl|php)(s)?(:(/|%2f|%u2215)(/|%2f|%u2215)) [NC,OR]
+	RewriteCond %{REQUEST_URI} (/)(=|\$&?|&?(pws|rk)=0|_mm|_vti_|cgi(\.|-)?|(=|/|;|,)nt\.) [NC,OR]
+	RewriteCond %{REQUEST_URI} (/)(127\.0\.0\.1|localhost|loopback|makefile|pingserver|wwwroot)(/)? [NC,OR]
+	RewriteCond %{REQUEST_URI} (\.)(conf(ig)?|ds_store|htaccess|htpasswd|init?|mysql-select-db)(/)?$ [NC,OR]
+	RewriteCond %{REQUEST_URI} (/)(bin)(/)(cc|chmod|chsh|cpp|echo|id|kill|mail|nasm|perl|ping|ps|python|tclsh)(/)?$ [NC,OR]
+	RewriteCond %{REQUEST_URI} (\(null\)|\{\$itemURL\}|cAsT\(0x|echo(.*)kae|etc/passwd|eval\(|self/environ|\+union\+all\+select) [NC,OR]
+	RewriteCond %{REQUEST_URI} (/)(awstats|(c99|php|web)shell|document_root|error_log|listinfo|muieblack|remoteview|site((.){0,2})copier|sqlpatch|sux0r) [NC,OR]
+	RewriteCond %{REQUEST_URI} (/)((php|web)?shell|conf(ig)?|crossdomain|fileditor|locus7|nstview|php(get|remoteview|writer)|r57|remview|sshphp|storm7|webadmin)(.*)(\.|\() [NC,OR]
+	RewriteCond %{REQUEST_URI} (/)(author-panel|bitrix|class|database|(db|mysql)-?admin|filemanager|htdocs|httpdocs|https?|mailman|mailto|manage|msoffice|mysql|php|_?php-?my-?admin(.*)|revslider|sql|system|tmp|undefined|usage|var|vhosts|webmaster|www)(/) [NC,OR]
+	RewriteCond %{REQUEST_URI} (base64_(en|de)code|benchmark|child_terminate|e?chr|eval|exec|function|fwrite|(f|p)open|html|leak|passthru|p?fsockopen|phpinfo|posix_(kill|mkfifo|setpgid|setsid|setuid)|proc_(close|get_status|nice|open|terminate)|(shell_)?exec|system)(.*)(\()(.*)(\)) [NC,OR]
+	RewriteCond %{REQUEST_URI} (\.)(7z|ab4|afm|aspx?|bash|ba?k?|bz2|cfg|cfml?|cgi|conf(ig)?|ctl|dat|db|dll|eml|et2|exe|fec|fla|gz|hg|inc|ini|inv|jsp|log|lqd|mbf|mdb|mmw|mny|old|one|out|passwd|pdb|pl|psd|pst|ptdb|pwd|py|qbb|qdf|rar|rdf|sdb|sql|sh|soa|swf|swl|swp|stx|tar|tax|tgz|tls|tmd|wow|zip|zlib)$ [NC,OR]
+	RewriteCond %{REQUEST_URI} (/)(^$|00.temp00|0day|3xp|70bex?|admin_events|bkht|(php|web)?shell|configbak|curltest|db|dompdf|filenetworks|hmei7|index\.php/index\.php/index|install|jahat|kcrew|keywordspy|mobiquo|mysql|nessus|php-?info|racrew|revslider|setup|sql|ucp|webconfig|(wp-)?conf(ig)?(uration)?|xertive)(\.php) [NC]	
+	RewriteRule . - [F,L]	
+	# RewriteRule . /7g_log.php?log [L,NE,E=7G_REQUEST_URI:%1___%2___%3]	
+</IfModule>
+# 7G:[USER AGENT]
+<IfModule mod_rewrite.c>	
+	RewriteCond %{REQUEST_URI} !(7g_log.php) [NC]	
+	RewriteCond %{HTTP_USER_AGENT} ([a-z0-9]{2000,}) [NC,OR]
+	RewriteCond %{HTTP_USER_AGENT} (&lt;|%0a|%0d|%27|%3c|%3e|%00|0x00) [NC,OR]
+	RewriteCond %{HTTP_USER_AGENT} ((c99|php|web)shell|remoteview|site((.){0,2})copier) [NC,OR]
+	RewriteCond %{HTTP_USER_AGENT} (base64_decode|bin/bash|disconnect|eval|lwp-download|unserialize|\\\x22) [NC,OR]
+	RewriteCond %{HTTP_USER_AGENT} (360Spider|acapbot|acoonbot|ahrefs|alexibot|archive.org|asterias|attackbot|backdorbot|becomebot|binlar|blackwidow|blekkobot|blexbot|blowfish|bullseye|bunnys|butterfly|careerbot|casper|checkpriv|cheesebot|cherrypick|chinaclaw|choppy|clshttp|cmsworld|copernic|copyrightcheck|cosmos|crescent|cy_cho|datacha|demon|diavol|discobot|dittospyder|dotbot|dotnetdotcom|dumbot|emailcollector|emailsiphon|emailwolf|exabot|extract|eyenetie|feedfinder|flaming|flashget|flicky|foobot|g00g1e|getright|gigabot|go-ahead-got|gozilla|grabnet|grafula|harvest|heritrix|httrack|icarus6j|jetbot|jetcar|jikespider|kmccrew|leechftp|libweb|linkextractor|linkscan|linkwalker|loader|miner|mj12bot|majestic|mechanize|morfeus|moveoverbot|netmechanic|netspider|nicerspro|nikto|ninja|nutch|octopus|pagegrabber|planetwork|postrank|proximic|purebot|pycurl|python|queryn|queryseeker|radian6|radiation|realdownload|rogerbot|scooter|seekerspider|semalt|seznambot|siclab|sindice|sistrix|sitebot|siteexplorer|sitesnagger|skygrid|smartdownload|snoopy|sosospider|spankbot|spbot|sqlmap|stackrambler|stripper|sucker|surftbot|sux0r|suzukacz|suzuran|takeout|teleport|telesoft|true_robots|turingos|turnit|vampire|vikspider|voideye|webleacher|webreaper|webstripper|webvac|webviewer|webwhacker|winhttp|wwwoffle|woxbot|xaldon|xxxyy|yamanalab|yioopbot|youda|zeus|zmeu|zune|zyborg) [NC]	
+	RewriteRule . - [F,L]	
+	# RewriteRule . /7g_log.php?log [L,NE,E=7G_USER_AGENT:%1]	
+</IfModule>
+# 7G:[REMOTE HOST]
+<IfModule mod_rewrite.c>	
+	RewriteCond %{REQUEST_URI} !(7g_log.php) [NC]	
+	RewriteCond %{REMOTE_HOST} (163data|amazonaws|colocrossing|crimea|g00g1e|justhost|kanagawa|loopia|masterhost|onlinehome|poneytel|sprintdatacenter|reverse.softlayer|safenet|ttnet|woodpecker|wowrack) [NC]	
+	RewriteRule . - [F,L]	
+	# RewriteRule . /7g_log.php?log [L,NE,E=7G_REMOTE_HOST:%1]	
+</IfModule>
+# 7G:[HTTP REFERRER]
+<IfModule mod_rewrite.c>	
+	RewriteCond %{REQUEST_URI} !(7g_log.php) [NC]	
+	RewriteCond %{HTTP_REFERER} (semalt.com|todaperfeita) [NC,OR]
+	RewriteCond %{HTTP_REFERER} (ambien|blue\spill|cialis|cocaine|ejaculat|erectile|erections|hoodia|huronriveracres|impotence|levitra|libido|lipitor|phentermin|pro[sz]ac|sandyauer|tramadol|troyhamby|ultram|unicauca|valium|viagra|vicodin|xanax|ypxaieo) [NC]
+	RewriteRule . - [F,L]	
+	# RewriteRule . /7g_log.php?log [L,NE,E=7G_HTTP_REFERRER:%1]	
+</IfModule>
+# 7G:[REQUEST METHOD]
+<IfModule mod_rewrite.c>	
+	RewriteCond %{REQUEST_URI} !(7g_log.php) [NC]	
+	RewriteCond %{REQUEST_METHOD} ^(connect|debug|delete|move|put|trace|track) [NC]	
+	RewriteRule . - [F,L]	
+	# RewriteRule . /7g_log.php?log [L,NE,E=7G_REQUEST_METHOD:%1]	
+</IfModule>
