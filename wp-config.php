@@ -87,6 +87,14 @@ define( 'ALTERNATE_WP_CRON',    'true' );
 define( 'WP_CRON_LOCK_TIMEOUT', 150 );
 
 
+/* FTP */
+define( 'FTP_USER', 'user' );
+define( 'FTP_PASS', 'password' );
+define( 'FTP_HOST', 'host' );
+define( 'FTP_SSL', false )
+/* or to resolve "WordPress Asking for FTP Credentials" Error */
+define('FS_METHOD','direct'); 
+
 /* Updates */
 define( 'WP_AUTO_UPDATE_CORE', true );
 define( 'DISALLOW_FILE_MODS', true );
