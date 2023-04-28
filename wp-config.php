@@ -68,7 +68,7 @@ define( 'SAVEQUERIES',      true );
 /* PHP Memory */
 define( 'WP_MEMORY_LIMIT', '10000M' );
 define( 'WP_MAX_MEMORY_LIMIT', '1000M' );
-define('WP_MEMORY_LIMIT', '128M')
+define('WP_MEMORY_LIMIT', '128M');
 
 /* WordPress Cache */
 define( 'WP_CACHE', true );
@@ -91,7 +91,7 @@ define( 'WP_CRON_LOCK_TIMEOUT', 150 );
 define( 'FTP_USER', 'user' );
 define( 'FTP_PASS', 'password' );
 define( 'FTP_HOST', 'host' );
-define( 'FTP_SSL', false )
+define( 'FTP_SSL', false );
 /* or to resolve "WordPress Asking for FTP Credentials" Error */
 define('FS_METHOD','direct'); 
 
