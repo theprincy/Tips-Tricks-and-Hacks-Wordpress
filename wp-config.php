@@ -68,7 +68,7 @@ define( 'SAVEQUERIES',      true );
 /* PHP Memory */
 define( 'WP_MEMORY_LIMIT', '10000M' );
 define( 'WP_MAX_MEMORY_LIMIT', '1000M' );
-define('WP_MEMORY_LIMIT', '128M');
+
 
 /* WordPress Cache */
 define( 'WP_CACHE', true );
