@@ -1,0 +1,5 @@
+To create new image sizes in WordPress, you need to add the following code to your theme’s functions.php file or a site-specific plugin.
+
+add_image_size( 'sidebar-thumb', 120, 120, true ); // Hard Crop Mode
+add_image_size( 'homepage-thumb', 220, 180 ); // Soft Crop Mode
+add_image_size( 'singlepost-thumb', 590, 9999 ); // Unlimited Height Mode
