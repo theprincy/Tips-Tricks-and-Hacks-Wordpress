@@ -1,0 +1,13 @@
+function wpb_new_contactmethods( $contactmethods ) {
+// Add Twitter
+$contactmethods['twitter'] = 'Twitter';
+//add Facebook
+$contactmethods['facebook'] = 'Facebook';
+ 
+return $contactmethods;
+}
+add_filter('user_contactmethods','wpb_new_contactmethods',10,1);
+
+You can now display these fields in your author template like this:
+
+<?php echo $curauth->twitter; ?>
