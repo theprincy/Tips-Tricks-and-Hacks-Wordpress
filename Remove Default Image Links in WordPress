@@ -1,0 +1,13 @@
+By default, when you upload images using the media uploader, WordPress asks you select how you would like to link to an image. If you don’t want to link to an image, then you can select None.
+
+A better way to deal with this is by adding the following code to your theme’s functions.php file or a site-specific plugin.
+
+
+function wpb_imagelink_setup() {
+    $image_set = get_option( 'image_default_link_type' );
+     
+    if ($image_set !== 'none') {
+        update_option('image_default_link_type', 'none');
+    }
+}
+add_action('admin_init', 'wpb_imagelink_setup', 10);
