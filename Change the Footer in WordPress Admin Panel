@@ -1,0 +1,7 @@
+function remove_footer_admin () {
+ 
+echo 'Fueled by <a href="http://www.wordpress.org" target="_blank">WordPress</a> | WordPress Tutorials: <a href="https://www.wpbeginner.com" target="_blank">WPBeginner</a></p>';
+ 
+}
+ 
+add_filter('admin_footer_text', 'remove_footer_admin');
