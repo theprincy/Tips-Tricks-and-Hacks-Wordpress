@@ -1,0 +1,20 @@
+First you’ll need to upload your custom logo to your theme’s images folder as custom-logo.png. Make sure your custom logo is 16×16 pixels in size.
+
+After that you can add this code to your theme’s functions file.
+
+function wpb_custom_logo() {
+echo '
+<style type="text/css">
+#wpadminbar #wp-admin-bar-wp-logo > .ab-item .ab-icon:before {
+background-image: url(' . get_bloginfo('stylesheet_directory') . 'https://cdn2.wpbeginner.com/images/custom-logo.png) !important;
+background-position: 0 0;
+color:rgba(0, 0, 0, 0);
+}
+#wpadminbar #wp-admin-bar-wp-logo.hover > .ab-item .ab-icon {
+background-position: 0 0;
+}
+</style>
+';
+}
+//hook into the administrative header output
+add_action('wp_before_admin_bar_render', 'wpb_custom_logo');
