@@ -1,0 +1,4 @@
+Bulk Delete WordPress Posts
+
+DELETE FROM ea_postmeta WHERE post_id in (SELECT ID FROM ea_posts WHERE ID BETWEEN xxx AND xxxx);
+DELETE FROM ea_posts where ID BETWEEN xx AND xxxx;
