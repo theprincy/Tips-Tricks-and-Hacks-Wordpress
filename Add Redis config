@@ -1,0 +1,47 @@
+define('WP_REDIS_CONFIG', [
+    'token' => 'e279430effe043b8c17d3f3c751c4c0846bc70c97f0eaaea766b4079001c',
+    'host' => '127.0.0.1',
+    'port' => 6379,
+    'database' => 0, // change for each site
+    'maxttl' => 3600 * 24 * 7, // 7 days
+    'timeout' => 1.0,
+    'read_timeout' => 1.0,
+    'prefetch' => true,
+    'split_alloptions' => true,
+    'strict' => true,
+    'debug' => false,
+'password' => 'password',
+]);
+
+define('WP_REDIS_DISABLED', false);
+
+
+
+High Performance Configuration; (For expert users only.)
+
+
+
+define('WP_REDIS_CONFIG', [
+    'token' => 'e279430effe043b8c17d3f3c751c4c0846bc70c97f0eaaea766b4079001c',
+    'host' => '127.0.0.1',
+    'port' => 6379,
+    'database' => 1, // change for each site
+    'timeout' => 0.5,
+    'read_timeout' => 0.5,
+    'retry_interval' => 10,
+    'maxttl' => 3600 * 24,
+    'retries' => 3,
+    'backoff' => 'smart',
+    'compression' => 'zstd', // `zstd` compresses smaller, `lz4` compresses faster
+    'serializer' => 'igbinary',
+    'async_flush' => true,
+    'split_alloptions' => true,
+    'prefetch' => true,
+    'shared' => true,
+    'strict' => true,
+    'debug' => false,
+    'save_commands' => false,
+'password' => 'password',
+]);
+
+define('WP_REDIS_DISABLED', getenv('WP_REDIS_DISABLED') ?: false);
