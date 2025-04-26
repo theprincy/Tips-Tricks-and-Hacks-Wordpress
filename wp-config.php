@@ -55,7 +55,12 @@ define( 'EMPTY_TRASH_DAYS', '15' );
 
 /* Multisite. */
 define( 'WP_ALLOW_MULTISITE', true );
-
+define( 'MULTISITE', true );
+define( 'SUBDOMAIN_INSTALL', true );      // false per sottocartelle
+define( 'DOMAIN_CURRENT_SITE', 'example.com' );
+define( 'PATH_CURRENT_SITE', '/' );
+define( 'SITE_ID_CURRENT_SITE', 1 );
+define( 'BLOG_ID_CURRENT_SITE', 1 );
 
 /* WordPress debug mode for developers. */
 define( 'WP_DEBUG',         true );
